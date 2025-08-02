@@ -6,25 +6,50 @@ function UploadResumes() {
   const [files, setFiles] = useState([]);
   const [uploadedResumes, setUploadedResumes] = useState([]);
 
-  const handleUpload = async (e) => {
-    e.preventDefault();
-    if (!files.length || !code) return alert("Please enter code and select files");
+const handleUpload = async (e) => {
+  e.preventDefault();
+  if (!files.length || !code) return alert("Please enter code and select files");
 
-    const formData = new FormData();
-    formData.append('code', code);
-    for (let file of files) {
-      formData.append('files', file);
-    }
+  const file = files[0]; // Only handling one file for now
+  const reader = new FileReader();
 
+  reader.onload = async () => {
     try {
-      await axios.post('http://localhost:4000/api/resumes/upload', formData);
-      alert('Uploaded!');
+      const base64String = reader.result.split(",")[1]; // remove prefix
+
+      const payload = {
+        filename: file.name,
+        jobCode: code,
+        fileData: {
+          $binary: {
+            base64: base64String,
+            subType: "00"
+          }
+        }
+      };
+
+      await axios.post("http://localhost:4000/api/resumes/uploadResume", payload, {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      alert("Uploaded!");
       setFiles([]);
     } catch (err) {
       console.error("Upload error:", err);
       alert("Failed to upload");
     }
   };
+
+  reader.onerror = (err) => {
+    console.error("File read error:", err);
+    alert("Error reading file");
+  };
+
+  reader.readAsDataURL(file); // This ensures base64 string
+};
+
 
   const getUpload = async (e) => {
     e.preventDefault();

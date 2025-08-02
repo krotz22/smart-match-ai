@@ -8,6 +8,9 @@ const Resume = require("../models/Resume");
 const Buffer = require("buffer").Buffer;
 
 // POST endpoint to store base64 PDF into MongoDB
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 router.post("/uploadResume", async (req, res) => {
   try {
     const { filename, jobCode, fileData } = req.body;
@@ -17,25 +20,23 @@ router.post("/uploadResume", async (req, res) => {
     }
 
     const base64String = fileData.$binary.base64;
-
-    // Decode base64 to binary
     const pdfBuffer = Buffer.from(base64String, "base64");
 
     const resume = new Resume({
       filename,
       jobCode,
-      file: pdfBuffer,
+      fileData: pdfBuffer, // make sure your schema uses `file: Buffer`
       contentType: "application/pdf"
     });
 
     await resume.save();
-
     res.status(201).json({ message: "Resume saved successfully" });
   } catch (err) {
     console.error("Error saving resume:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 // Get resumes by jobCode
 router.get("/", async (req, res) => {

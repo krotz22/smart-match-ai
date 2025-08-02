@@ -1,68 +1,153 @@
-
-from fastapi import FastAPI
-from pymongo import MongoClient
-from match import smart_match, format_jd_for_llm, format_resume_for_llm
-from parser import parse_resume_with_llm_binary
-from datetime import datetime
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from pymongo import MongoClient
+from bson import ObjectId
+from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-app = FastAPI()
+# Import your modules
+from match import smart_match, format_jd_for_llm, format_resume_for_llm
+from parser import parse_resume_with_llm_binary
 
-# Allow CORS
+load_dotenv()
+
+app = FastAPI(title="AI Recruiter API", version="1.0.0")
+
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Configure this properly for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # MongoDB setup
-client = MongoClient("mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+client = MongoClient(MONGO_URL)
 db = client["ai-recruiter"]
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
 
+def serialize_doc(doc):
+    """Convert MongoDB document to JSON serializable format"""
+    if doc and "_id" in doc:
+        doc["_id"] = str(doc["_id"])
+    return doc
+
+def serialize_docs(docs):
+    """Convert list of MongoDB documents to JSON serializable format"""
+    return [serialize_doc(doc) for doc in docs]
+
+@app.get("/")
+async def root():
+    return {"message": "AI Recruiter API is running"}
+
 @app.post("/match/{job_code}")
-def match_job(job_code: str):
-    job = job_collection.find_one({"jobCode": job_code})
-    if not job:
-        return {"error": "Job not found"}
+async def match_job(job_code: str):
+    """Match candidates with a specific job"""
+    try:
+        # Find job by job code
+        job = job_collection.find_one({"jobCode": job_code})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
 
-    jd_text = format_jd_for_llm(job)
-    resumes = list(resume_collection.find({"jobCode": job_code}))
+        # Format job description
+        jd_text = format_jd_for_llm(job)
+        
+        # Get all resumes for this job
+        resumes = list(resume_collection.find({"jobCode": job_code}))
+        
+        if not resumes:
+            return {"results": [], "message": "No resumes found for this job"}
 
-    results = []
-    for res in resumes:
-        binary_data = res.get("fileData")
-        resume_data = parse_resume_with_llm_binary(binary_data)
-        resume_text = format_resume_for_llm(resume_data)
+        results = []
+        
+        for resume_doc in resumes:
+            try:
+                # Get binary data
+                binary_data = resume_doc.get("fileData")
+                if not binary_data:
+                    print(f"No file data found for resume {resume_doc.get('_id')}")
+                    continue
+                
+                # Parse resume
+                resume_data = parse_resume_with_llm_binary(binary_data)
+                resume_text = format_resume_for_llm(resume_data)
 
-        match = smart_match(jd_text, resume_text, threshold=60)
+                # Perform matching
+                match = smart_match(jd_text, resume_text, threshold=60)
 
-        entry = {
-            "candidateName": resume_data.get("Full Name", "N/A"),
-            "jobCode": job_code,
-            "score": match.get("match_score", 0),
-            "matchedSkills": match.get("matched_skills", []),
-            "missingSkills": match.get("missing_skills", []),
-            "summary": match.get("summary", "Could not parse result."),
-            "shortlist": match.get("shortlist", False),
-            "dateShortlisted": datetime.utcnow()
-        }
+                # Create shortlist entry
+                entry = {
+                    "candidateName": resume_data.get("Full Name", "N/A"),
+                    "resumeId": str(resume_doc["_id"]),
+                    "jobCode": job_code,
+                    "score": match.get("match_score", 0),
+                    "matchedSkills": match.get("matched_skills", []),
+                    "missingSkills": match.get("missing_skills", []),
+                    "summary": match.get("summary", "Could not generate summary."),
+                    "shortlist": match.get("shortlist", False),
+                    "dateShortlisted": datetime.utcnow()
+                }
 
-        inserted = shortlist_collection.insert_one(entry)
-        entry["_id"] = str(inserted.inserted_id)
-        results.append(entry)
+                # Insert into shortlist collection
+                inserted = shortlist_collection.insert_one(entry)
+                entry["_id"] = str(inserted.inserted_id)
+                
+                results.append(entry)
+                
+            except Exception as e:
+                print(f"Error processing resume {resume_doc.get('_id')}: {e}")
+                continue
 
-    return jsonable_encoder({"results": results})
+        return jsonable_encoder({"results": results, "total": len(results)})
+        
+    except Exception as e:
+        print(f"Error in match_job: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/shortlist/{job_code}")
-def get_shortlist(job_code: str):
-    data = list(shortlist_collection.find({"jobCode": job_code}))
-    for item in data:
-        item["_id"] = str(item["_id"])
-    return jsonable_encoder(data)
+async def get_shortlist(job_code: str):
+    """Get shortlisted candidates for a job"""
+    try:
+        # Get shortlisted candidates
+        data = list(shortlist_collection.find({"jobCode": job_code}))
+        
+        # Serialize documents
+        serialized_data = serialize_docs(data)
+        
+        return jsonable_encoder({
+            "shortlist": serialized_data,
+            "total": len(serialized_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_shortlist: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/jobs")
+async def get_jobs():
+    """Get all jobs"""
+    try:
+        jobs = list(job_collection.find())
+        return jsonable_encoder({"jobs": serialize_docs(jobs)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/resumes/{job_code}")
+async def get_resumes(job_code: str):
+    """Get all resumes for a job"""
+    try:
+        resumes = list(resume_collection.find({"jobCode": job_code}, {"fileData": 0}))  # Exclude binary data
+        return jsonable_encoder({"resumes": serialize_docs(resumes)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
