@@ -28,7 +28,7 @@ const handleUpload = async (e) => {
         }
       };
 
-      await axios.post("http://localhost:4000/api/resumes/uploadResume", payload, {
+      await axios.post("https://smart-match-ai-node.onrender.com/api/resumes/uploadResume", payload, {
         headers: {
           "Content-Type": "application/json"
         }
@@ -56,7 +56,7 @@ const handleUpload = async (e) => {
     if (!code) return alert("Enter a job code");
 
     try {
-      const res = await axios.get(`http://localhost:4000/api/resumes?code=${code}`);
+      const res = await axios.get(`https://smart-match-ai-node.onrender.com/api/resumes?code=${code}`);
       setUploadedResumes(res.data);
     } catch (err) {
       console.error("Fetch error:", err);

@@ -12,7 +12,7 @@ function SmartMatchPage() {
   useEffect(() => {
     const fetchJobCodes = async () => {
       try {
-        const res = await axios.get("http://localhost:8000/jobs");
+        const res = await axios.get("https://smart-match-ai-node.onrender.com/api/jobs");
         if (res.data && res.data.jobs) {
           setJobCodes(res.data.jobs.map(job => job.jobCode));
         } else if (Array.isArray(res.data)) {
@@ -37,7 +37,7 @@ function SmartMatchPage() {
     setError('');
     
     try {
-      const res = await axios.get(`http://localhost:8000/resumes/${selectedCode}`);
+      const res = await axios.get(`https://smart-match-ai-node.onrender.com/api/resumes?code=${selectedCode}`);
       if (res.data && res.data.resumes) {
         setResumes(res.data.resumes);
       } else if (Array.isArray(res.data)) {
@@ -68,11 +68,11 @@ function SmartMatchPage() {
       console.log("Starting matching process for job code:", selectedCode);
       
       // Step 1: Trigger the matching process
-      const matchResponse = await axios.post(`http://localhost:8000/match/${selectedCode}`);
+      const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
       console.log("Match response:", matchResponse.data);
       
       // Step 2: Fetch the shortlist results
-      const shortlistResponse = await axios.get(`http://localhost:8000/shortlist/${selectedCode}`);
+      const shortlistResponse = await axios.get(`https://smart-match-ai-node.onrender.com/shortlist/${selectedCode}`);
       console.log("Shortlist response:", shortlistResponse.data);
       
       // Based on your data structure, handle the response

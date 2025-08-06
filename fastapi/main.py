@@ -26,12 +26,13 @@ app.add_middleware(
 )
 
 # MongoDB setup
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGO_URL")
 client = MongoClient(MONGO_URL)
-db = client["ai-recruiter"]
+db = client.get_default_database()
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
+print("✅ MongoDB URI:", MONGO_URL)
 
 def serialize_doc(doc):
     """Convert MongoDB document to JSON serializable format"""

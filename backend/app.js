@@ -20,7 +20,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/shortlists", shortlistRoutes);
 
 
-const uri = process.env.MONGO_URI;
+const uri = process.env.MONGO_URL;
 
 mongoose.connect(uri, {
   useNewUrlParser: true,
@@ -29,3 +29,8 @@ mongoose.connect(uri, {
 .then(() => console.log("✅ Connected to MongoDB Atlas using Mongoose"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

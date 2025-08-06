@@ -14,13 +14,13 @@ function JobsPage() {
   }, []);
 
   const fetchJobs = async () => {
-    const res = await axios.get("http://localhost:4000/api/jobs");
+    const res = await axios.get("https://smart-match-ai-node.onrender.com/api/jobs");
     setJobs(res.data);
   };
 
   const handleAddJob = async () => {
     if (!newTitle || !newDesc || !newCode) return;
-    const res = await axios.post("http://localhost:4000/api/jobs", {
+    const res = await axios.post("https://smart-match-ai-node.onrender.com/api/jobs", {
       title: newTitle,
       description: newDesc,
       jobCode: newCode,
@@ -33,7 +33,7 @@ function JobsPage() {
   };
 
   const handleDeleteJob = async (id) => {
-    await axios.delete(`http://localhost:4000/api/jobs/${id}`);
+    await axios.delete(`https://smart-match-ai-node.onrender.com/api/jobs/${id}`);
     setJobs(jobs.filter((job) => job._id !== id));
   };
 
