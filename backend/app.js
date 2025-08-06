@@ -20,7 +20,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/shortlists", shortlistRoutes);
 
 
-const uri = process.env.MONGO_URI;
+const uri = process.env.MONGO_URL;
 
 mongoose.connect(uri, {
   useNewUrlParser: true,
