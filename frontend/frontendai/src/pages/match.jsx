@@ -72,7 +72,7 @@ function SmartMatchPage() {
       console.log("Match response:", matchResponse.data);
       
       // Step 2: Fetch the shortlist results
-      const shortlistResponse = await axios.get(`https://smart-match-ai-node.onrender.com/shortlist/${selectedCode}`);
+      const shortlistResponse = await axios.get(`https://smart-match-ai-node.onrender.com/api/shortlist/${selectedCode}`);
       console.log("Shortlist response:", shortlistResponse.data);
       
       // Based on your data structure, handle the response
