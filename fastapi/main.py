@@ -28,7 +28,7 @@ app.add_middleware(
 # MongoDB setup
 MONGO_URL = os.getenv("MONGO_URL")
 client = MongoClient(MONGO_URL)
-db = client.get_default_database()
+db = client["test"]
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
