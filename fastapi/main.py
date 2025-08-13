@@ -7,7 +7,7 @@ from bson import ObjectId
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-
+from pymongo.server_api import ServerApi
 # Import your modules
 from match import smart_match, format_jd_for_llm, format_resume_for_llm
 from parser import parse_resume_with_llm_binary
@@ -26,9 +26,16 @@ app.add_middleware(
 )
 
 # MongoDB setup
+
 MONGO_URL = os.getenv("MONGO_URL")
+<<<<<<< HEAD
 client = MongoClient(MONGO_URL)
 db = client["test"]
+=======
+client = MongoClient(MONGO_URL, server_api=ServerApi('1'))
+db = client["test"]
+
+>>>>>>> 00aec22 (Fix CORS and add delay before fetching shortlist results)
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
@@ -54,6 +61,7 @@ async def match_job(job_code: str):
     try:
         # Find job by job code
         job = job_collection.find_one({"jobCode": job_code})
+        print(job)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
@@ -148,6 +156,14 @@ async def get_resumes(job_code: str):
         return jsonable_encoder({"resumes": serialize_docs(resumes)})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+print("Searching for job code ML2024 in jobs collection...")
+job = job_collection.find_one({"jobCode": "ML2024"})
+print("Found job:", job)
+jobs = list(job_collection.find())
+print("All jobs in jobs collection:", jobs)
+print("Connected to DB:", db.name)
+print("Sample job document:", job_collection.find_one())
+print(client.list_database_names())
 
 if __name__ == "__main__":
     import uvicorn

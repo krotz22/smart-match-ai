@@ -69,11 +69,22 @@ function SmartMatchPage() {
       
       // Step 1: Trigger the matching process
       const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
+<<<<<<< HEAD
       console.log("Match response:", matchResponse.data);
       
       // Step 2: Fetch the shortlist results
       const shortlistResponse = await axios.get(`https://smart-match-ai-node.onrender.com/api/shortlist/${selectedCode}`);
       console.log("Shortlist response:", shortlistResponse.data);
+=======
+
+// Wait 3 seconds before fetching results
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+const shortlistResponse = await axios.get(
+  `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}`
+);
+
+>>>>>>> 00aec22 (Fix CORS and add delay before fetching shortlist results)
       
       // Based on your data structure, handle the response
       let resultsList = [];
