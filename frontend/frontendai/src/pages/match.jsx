@@ -74,7 +74,7 @@ function SmartMatchPage() {
 await new Promise(resolve => setTimeout(resolve, 3000));
 
 const shortlistResponse = await axios.get(
-  `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}`
+  `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}` );
 
 
       
