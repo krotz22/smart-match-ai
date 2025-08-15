@@ -77,7 +77,6 @@ const shortlistResponse = await axios.get(
   `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}`
 
 
->>>>>>> 00aec22 (Fix CORS and add delay before fetching shortlist results)
       
       // Based on your data structure, handle the response
       let resultsList = [];
