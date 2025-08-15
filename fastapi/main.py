@@ -28,8 +28,6 @@ app.add_middleware(
 # MongoDB setup
 
 MONGO_URL = os.getenv("MONGO_URL")
-\client = MongoClient(MONGO_URL)
-db = client["test"]
 
 client = MongoClient(MONGO_URL, server_api=ServerApi('1'))
 db = client["test"]
