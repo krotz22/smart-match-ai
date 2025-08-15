@@ -68,7 +68,7 @@ function SmartMatchPage() {
       console.log("Starting matching process for job code:", selectedCode);
       
       // Step 1: Trigger the matching process
-      const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
+    const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
 
 // Wait 3 seconds before fetching results
 await new Promise(resolve => setTimeout(resolve, 3000));
