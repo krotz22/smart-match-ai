@@ -1,5 +1,5 @@
 require('dotenv').config(); // must be at the top
-
+const cors = require('cors');
 const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
@@ -8,7 +8,6 @@ const path = require("path");
 const app = express();
 app.use(cors({ origin: "*" })); 
 app.use(express.json());
-app.use(cors({ origin: "*" })); // or your frontend domain
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
