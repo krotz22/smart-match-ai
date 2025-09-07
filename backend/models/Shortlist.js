@@ -7,6 +7,7 @@ const shortlistSchema = new mongoose.Schema({
   matchedSkills: [String],
   missingSkills: [String],
   summary: String,
+  email: { type: String, default: "N/A" }, 
   dateShortlisted: { type: Date, default: Date.now },
 });
 

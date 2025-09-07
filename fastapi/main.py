@@ -28,14 +28,8 @@ app.add_middleware(
 # MongoDB setup
 
 MONGO_URL = os.getenv("MONGO_URL")
-<<<<<<< HEAD
 client = MongoClient(MONGO_URL)
 db = client["test"]
-=======
-client = MongoClient(MONGO_URL, server_api=ServerApi('1'))
-db = client["test"]
-
->>>>>>> 00aec22 (Fix CORS and add delay before fetching shortlist results)
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
@@ -94,6 +88,7 @@ async def match_job(job_code: str):
                 # Create shortlist entry
                 entry = {
                     "candidateName": resume_data.get("Full Name", "N/A"),
+                    "email": resume_data.get("Contact Information", {}).get("email", "N/A") if isinstance(resume_data.get("Contact Information"), dict) else "N/A",
                     "resumeId": str(resume_doc["_id"]),
                     "jobCode": job_code,
                     "score": match.get("match_score", 0),
