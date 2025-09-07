@@ -1,18 +1,14 @@
 require('dotenv').config(); // must be at the top
-
+const cors = require('cors');
 const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
  
 
 const app = express();
-<<<<<<< HEAD
 app.use(cors({ origin: "*" })); 
-=======
 app.use(express.json());
-app.use(cors({ origin: "*" })); // or your frontend domain
 
->>>>>>> 00aec22 (Fix CORS and add delay before fetching shortlist results)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const resumeRoutes = require("./routes/resumeRoutes");

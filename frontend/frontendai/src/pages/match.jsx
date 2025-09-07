@@ -68,14 +68,18 @@ function SmartMatchPage() {
       console.log("Starting matching process for job code:", selectedCode);
       
       // Step 1: Trigger the matching process
+<<<<<<< HEAD
       const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
+=======
+    const matchResponse = await axios.post(`https://smart-match-ai.onrender.com/match/${selectedCode}`);
+>>>>>>> 0dd883b06c413697c33b3425a5f26cd57a965483
 
 // Wait 3 seconds before fetching results
 await new Promise(resolve => setTimeout(resolve, 3000));
 
 const shortlistResponse = await axios.get(
-  `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}`
-);
+  `https://smart-match-ai-node.onrender.com/api/shortlists?code=${selectedCode}` );
+
 
       
       // Based on your data structure, handle the response
