@@ -16,6 +16,23 @@ load_dotenv()
 
 app = FastAPI(title="AI Recruiter API", version="1.0.0")
 
+# Environment validation
+MONGO_URL = os.getenv("MONGO_URL")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+
+# Validate required environment variables
+if not MONGO_URL:
+    print("❌ ERROR: MONGO_URL environment variable is not set!")
+    raise ValueError("MONGO_URL environment variable is required")
+
+if not MISTRAL_API_KEY:
+    print("❌ ERROR: MISTRAL_API_KEY environment variable is not set!")
+    raise ValueError("MISTRAL_API_KEY environment variable is required")
+
+print("✅ Environment variables validated successfully")
+print(f"✅ MONGO_URL configured: {MONGO_URL[:20]}...")
+print(f"✅ MISTRAL_API_KEY configured: {'*' * len(MISTRAL_API_KEY) if MISTRAL_API_KEY else 'NOT SET'}")
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -26,14 +43,12 @@ app.add_middleware(
 )
 
 # MongoDB setup
-
-MONGO_URL = os.getenv("MONGO_URL")
 client = MongoClient(MONGO_URL)
 db = client["test"]
 resume_collection = db["resumes"]
 job_collection = db["jobs"]
 shortlist_collection = db["shortlists"]
-print("✅ MongoDB URI:", MONGO_URL)
+print(f"✅ MongoDB connected to database: {db.name}")
 
 def serialize_doc(doc):
     """Convert MongoDB document to JSON serializable format"""
@@ -75,15 +90,21 @@ async def match_job(job_code: str):
                 # Get binary data
                 binary_data = resume_doc.get("fileData")
                 if not binary_data:
-                    print(f"No file data found for resume {resume_doc.get('_id')}")
+                    print(f"❌ No file data found for resume {resume_doc.get('_id')}")
                     continue
+                
+                print(f"🔄 Processing resume {resume_doc.get('_id')}...")
                 
                 # Parse resume
                 resume_data = parse_resume_with_llm_binary(binary_data)
+                print(f"✅ Resume parsed successfully: {resume_data.get('Full Name', 'N/A')}")
+                
                 resume_text = format_resume_for_llm(resume_data)
 
                 # Perform matching
+                print(f"🔄 Performing smart match...")
                 match = smart_match(jd_text, resume_text, threshold=60)
+                print(f"✅ Match completed with score: {match.get('match_score', 0)}")
 
                 # Create shortlist entry
                 entry = {
@@ -106,7 +127,26 @@ async def match_job(job_code: str):
                 results.append(entry)
                 
             except Exception as e:
-                print(f"Error processing resume {resume_doc.get('_id')}: {e}")
+                print(f"❌ Error processing resume {resume_doc.get('_id')}: {e}")
+                print(f"❌ Error type: {type(e).__name__}")
+                # Create a default entry for failed resumes to help with debugging
+                failed_entry = {
+                    "candidateName": "Processing Failed",
+                    "email": "N/A",
+                    "resumeId": str(resume_doc["_id"]),
+                    "jobCode": job_code,
+                    "score": 0,
+                    "matchedSkills": [],
+                    "missingSkills": [],
+                    "summary": f"Processing failed: {str(e)}",
+                    "shortlist": False,
+                    "dateShortlisted": datetime.utcnow()
+                }
+                
+                # Insert failed entry for debugging
+                inserted = shortlist_collection.insert_one(failed_entry)
+                failed_entry["_id"] = str(inserted.inserted_id)
+                results.append(failed_entry)
                 continue
 
         return jsonable_encoder({"results": results, "total": len(results)})

@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
+# Validate API key
+if not MISTRAL_API_KEY:
+    print("⚠️  WARNING: MISTRAL_API_KEY not found in environment variables")
+
 # Headers for Mistral API
 headers = {
     "Authorization": f"Bearer {MISTRAL_API_KEY}",
@@ -141,12 +145,32 @@ Candidate Resume:
 
         return result
         
-    except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError) as e:
-        print(f"❌ API call or JSON parsing error: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ API request error in smart_match: {e}")
+        print(f"❌ MISTRAL_API_KEY configured: {'Yes' if MISTRAL_API_KEY else 'No'}")
         return {
             "match_score": 0,
             "matched_skills": [],
             "missing_skills": [],
-            "summary": "Could not parse result due to an error.",
+            "summary": f"API request failed: {str(e)}",
+            "shortlist": False
+        }
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"❌ JSON parsing error in smart_match: {e}")
+        return {
+            "match_score": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "summary": f"Could not parse API response: {str(e)}",
+            "shortlist": False
+        }
+    except Exception as e:
+        print(f"❌ Unexpected error in smart_match: {e}")
+        print(f"❌ Error type: {type(e).__name__}")
+        return {
+            "match_score": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "summary": f"Unexpected error: {str(e)}",
             "shortlist": False
         }

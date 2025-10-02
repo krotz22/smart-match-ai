@@ -11,6 +11,10 @@ load_dotenv()
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
+# Validate API key
+if not MISTRAL_API_KEY:
+    print("⚠️  WARNING: MISTRAL_API_KEY not found in environment variables")
+
 HEADERS = {
     "Authorization": f"Bearer {MISTRAL_API_KEY}",
     "Content-Type": "application/json"
@@ -108,13 +112,18 @@ Resume Text:
         return structured
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ API request error: {e}")
+        print(f"❌ API request error in parse_resume_with_llm_binary: {e}")
+        print(f"❌ MISTRAL_API_KEY configured: {'Yes' if MISTRAL_API_KEY else 'No'}")
         return create_default_response(text if 'text' in locals() else "")
     except fitz.fitz.FileDataError as e:
-        print(f"❌ PDF parsing error: {e}")
+        print(f"❌ PDF parsing error in parse_resume_with_llm_binary: {e}")
         return create_default_response("")
+    except ValueError as e:
+        print(f"❌ JSON parsing error in parse_resume_with_llm_binary: {e}")
+        return create_default_response(text if 'text' in locals() else "")
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"❌ Unexpected error in parse_resume_with_llm_binary: {e}")
+        print(f"❌ Error type: {type(e).__name__}")
         return create_default_response(text if 'text' in locals() else "")
 
 def create_default_response(text=""):
