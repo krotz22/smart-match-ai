@@ -1,20 +1,21 @@
 import json
 import os
 import requests
+import re
 from dotenv import load_dotenv
 
 # Load API key from .env
 load_dotenv()
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Headers for Mistral API
-headers = {
-    "Authorization": f"Bearer {MISTRAL_API_KEY}",
+# Headers for Gemini API - Key is passed as query param in the final URL
+HEADERS = {
     "Content-Type": "application/json"
 }
 
-# Mistral endpoint
-MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+# Gemini endpoint (using gemini-2.5-pro for complex structured tasks)
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent"
+
 
 def format_resume_for_llm(resume):
     """Format resume data for LLM processing"""
@@ -32,13 +33,13 @@ def format_resume_for_llm(resume):
     skills = resume.get("Skills", [])
     if skills:
         lines.append("Skills:")
-        lines.extend([f"- {skill}" for skill in skills[:10]])  # Limit to 10 skills
+        lines.extend([f"- {skill}" for skill in skills[:10]])
     
     # Education
     education = resume.get("Education", [])
     if education:
         lines.append("Education:")
-        for edu in education[:3]:  # Limit to 3 entries
+        for edu in education[:3]:
             if isinstance(edu, dict):
                 degree = edu.get("Degree", "N/A")
                 fields = edu.get("Fields of Study", "N/A")
@@ -51,12 +52,13 @@ def format_resume_for_llm(resume):
     work_exp = resume.get("Work Experience", [])
     if work_exp:
         lines.append("Work Experience:")
-        for exp in work_exp[:5]:  # Limit to 5 entries
+        for exp in work_exp[:5]:
             if isinstance(exp, dict):
                 position = exp.get('Position', 'N/A')
                 company = exp.get('Company Name', 'N/A')
                 years = exp.get('Years Worked', 'N/A')
-                achievements = exp.get('Achievements', 'N/A')
+                # Note: Achievements may contain detailed text, so we include it.
+                achievements = exp.get('Achievements', 'N/A') 
                 lines.append(f"- {position} at {company} ({years}): {achievements}")
             else:
                 lines.append(f"- {exp}")
@@ -65,9 +67,10 @@ def format_resume_for_llm(resume):
     certs = resume.get("Certifications", [])
     if certs:
         lines.append("Certifications:")
-        lines.extend([f"- {cert}" for cert in certs[:5]])  # Limit to 5 certs
+        lines.extend([f"- {cert}" for cert in certs[:5]])
     
     return "\n".join(lines)
+
 
 def format_jd_for_llm(jd):
     """Format job description for LLM processing"""
@@ -90,18 +93,45 @@ def format_jd_for_llm(jd):
     
     return "\n".join(lines)
 
+
+def extract_json_from_response(text):
+    """Extract the first valid JSON object from text response"""
+    try:
+        # Try to find JSON block using regex (non-greedy match)
+        json_match = re.search(r'\{.*?\}', text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            # Simple cleanup for common LLM output issues
+            json_str = json_str.replace('},\n]', '}]').replace(',\n}', '}')
+            return json.loads(json_str)
+        else:
+            return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Could not extract valid JSON from response: {e}")
+
+
 def smart_match(jd_text, resume_text, threshold=60):
-    """Match candidate with job description using Mistral LLM"""
+    """Match candidate with job description using Gemini LLM"""
+    
+    if not GEMINI_API_KEY:
+        print("❌ GEMINI_API_KEY not found in environment.")
+        return {
+            "match_score": 0, "matched_skills": [], "missing_skills": [],
+            "summary": "API Key not configured.", "shortlist": False
+        }
+
     prompt = f"""
 You are an AI recruitment assistant. Evaluate the candidate's resume against the job description.
+Your response MUST be ONLY a valid JSON object.
+ENSURE YOUR RESPONSE STARTS AND ENDS WITH THE JSON BRACES {{...}}.
 
-Provide ONLY a valid JSON response with these exact keys:
+Provide ONLY a valid JSON response with these exact keys and data types:
 {{
-    "match_score": 75,
-    "matched_skills": ["skill1", "skill2"],
-    "missing_skills": ["skill3", "skill4"],
-    "summary": "Brief evaluation summary",
-    "shortlist": true
+    "match_score": 75, // integer score from 0 to 100
+    "matched_skills": ["skill1", "skill2"], // array of strings
+    "missing_skills": ["skill3", "skill4"], // array of strings
+    "summary": "Brief evaluation summary", // string
+    "shortlist": true // boolean
 }}
 
 Job Description:
@@ -110,43 +140,44 @@ Job Description:
 Candidate Resume:
 {resume_text}
 """
-
+    # 1. Call Gemini API
     payload = {
-        "model": "mistral-large-latest",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3,
-        "max_tokens": 1000
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "config": {
+            "temperature": 0.3,
+            "maxOutputTokens": 1000
+        }
     }
 
+    # API Key appended to URL for this endpoint structure
+    url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+
     try:
-        response = requests.post(MISTRAL_API_URL, headers=headers, json=payload, timeout=30)
+        response = requests.post(url, headers=HEADERS, json=payload, timeout=30)
         response.raise_for_status()
         
-        message = response.json()["choices"][0]["message"]["content"].strip()
-        
-        # Extract JSON from response
-        import re
-        json_match = re.search(r'\{.*?\}', message, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group(0))
-        else:
-            result = json.loads(message)
+        response_data = response.json()
+        message_content = response_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
 
-        # Ensure required fields and types
+        # 2. Extract and Validate JSON
+        result = extract_json_from_response(message_content)
+
+        # 3. Ensure required fields and types
         result["match_score"] = int(result.get("match_score", 0))
         result["matched_skills"] = result.get("matched_skills", [])
         result["missing_skills"] = result.get("missing_skills", [])
         result["summary"] = result.get("summary", "Could not generate summary.")
+        # Determine shortlist based on threshold
         result["shortlist"] = result["match_score"] >= threshold
 
         return result
         
-    except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError) as e:
+    except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"❌ API call or JSON parsing error: {e}")
         return {
             "match_score": 0,
             "matched_skills": [],
             "missing_skills": [],
-            "summary": "Could not parse result due to an error.",
+            "summary": f"Could not parse result due to an error: {e}",
             "shortlist": False
         }
