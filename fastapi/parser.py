@@ -9,15 +9,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent"
 
-# Headers for Gemini API - Key is passed as query param in the final URL
+# Validate API key
+if not GEMINI_API_KEY:
+    print("⚠️  WARNING: GEMINI_API_KEY not found in environment variables")
+
 HEADERS = {
     "Content-Type": "application/json"
 }
-
-# Gemini endpoint (using gemini-2.5-pro for complex structured tasks)
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent"
-
 
 def extract_json_from_response(text):
     """Extract the first valid JSON object from text response"""
@@ -26,12 +26,12 @@ def extract_json_from_response(text):
         json_match = re.search(r'\{.*?\}', text, re.DOTALL)
         if json_match:
             json_str = json_match.group(0)
-            # Simple cleanup for common LLM output issues
-            json_str = json_str.replace('},\n]', '}]').replace(',\n}', '}')
+            # Try to parse the extracted JSON
             return json.loads(json_str)
         else:
+            # If no JSON block found, try parsing the entire text
             return json.loads(text)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         # If JSON parsing fails, try to find the largest JSON-like structure
         json_match = re.search(r'\{[\s\S]*\}', text)
         if json_match:
@@ -39,46 +39,29 @@ def extract_json_from_response(text):
                 return json.loads(json_match.group(0))
             except json.JSONDecodeError:
                 pass
-        raise ValueError(f"Could not extract valid JSON from response: {e}")
-
-
-def create_default_response(text=""):
-    """Create default response structure when parsing fails"""
-    return {
-        "Full Name": "N/A",
-        "Contact Information": {"email": "N/A", "phone": "N/A"},
-        "Skills": [],
-        "Education": [],
-        "Work Experience": [],
-        "Certifications": [],
-        "Raw Text": text
-    }
-
+        raise ValueError("Could not extract valid JSON from response")
 
 def parse_resume_with_llm_binary(file_bytes: bytes):
     """Parse PDF resume from binary data using Gemini LLM"""
-    text = ""
-    
-    if not GEMINI_API_KEY:
-        print("❌ GEMINI_API_KEY not found in environment.")
-        return create_default_response()
-
     try:
-        # 1. Extract Text from PDF (PyMuPDF)
+        # Create BytesIO stream from bytes
         stream = io.BytesIO(file_bytes)
+        
+        # Open PDF with PyMuPDF
         doc = fitz.open(stream=stream, filetype="pdf")
         
+        # Extract text from all pages
+        text = ""
         for page in doc:
             text += page.get_text()
-        doc.close()
+        
+        doc.close()  # Close the document
         
         if not text.strip():
             raise ValueError("No text could be extracted from the PDF")
 
-        # 2. Prepare Prompt for Gemini
         prompt = f"""
 You are an expert resume parser AI. Extract information from the following resume text and respond with ONLY a valid JSON object.
-ENSURE YOUR RESPONSE STARTS AND ENDS WITH THE JSON BRACES {{...}}.
 
 Required JSON format:
 {{
@@ -102,12 +85,11 @@ Required JSON format:
     "Certifications": ["cert1", "cert2"]
 }}
 
-Resume Text (limited to 4000 characters for safety):
+Resume Text:
 {text[:4000]}
         """
 
-        # 3. Call Gemini API
-        payload = {
+        data = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "config": {
                 "temperature": 0.3,
@@ -115,27 +97,45 @@ Resume Text (limited to 4000 characters for safety):
             }
         }
 
-        # API Key appended to URL for this endpoint structure
+        # API Key appended to URL for Gemini endpoint structure
         url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-        
-        response = requests.post(url, headers=HEADERS, json=payload, timeout=30)
+        response = requests.post(url, headers=HEADERS, json=data, timeout=30)
         response.raise_for_status()
 
         response_data = response.json()
         message_content = response_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
 
-        # 4. Extract and Validate JSON
+        # Extract JSON from response
         structured = extract_json_from_response(message_content)
+        
+        # Add raw text to the result
         structured["Raw Text"] = text
 
         return structured
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ API request error: {e}")
-        return create_default_response(text)
+        print(f"❌ API request error in parse_resume_with_llm_binary: {e}")
+        print(f"❌ GEMINI_API_KEY configured: {'Yes' if GEMINI_API_KEY else 'No'}")
+        return create_default_response(text if 'text' in locals() else "")
     except fitz.fitz.FileDataError as e:
-        print(f"❌ PDF parsing error: {e}")
-        return create_default_response()
+        print(f"❌ PDF parsing error in parse_resume_with_llm_binary: {e}")
+        return create_default_response("")
+    except ValueError as e:
+        print(f"❌ JSON parsing error in parse_resume_with_llm_binary: {e}")
+        return create_default_response(text if 'text' in locals() else "")
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        return create_default_response(text)
+        print(f"❌ Unexpected error in parse_resume_with_llm_binary: {e}")
+        print(f"❌ Error type: {type(e).__name__}")
+        return create_default_response(text if 'text' in locals() else "")
+
+def create_default_response(text=""):
+    """Create default response structure when parsing fails"""
+    return {
+        "Full Name": "N/A",
+        "Contact Information": {"email": "N/A", "phone": "N/A"},
+        "Skills": [],
+        "Education": [],
+        "Work Experience": [],
+        "Certifications": [],
+        "Raw Text": text
+    }

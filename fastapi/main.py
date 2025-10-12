@@ -26,10 +26,12 @@ if not MONGO_URL:
     raise ValueError("MONGO_URL environment variable is required")
 
 if not GEMINI_API_KEY:
-    print("❌ ERROR: MISTRAL_API_KEY environment variable is not set!")
-    raise ValueError("MISTRAL_API_KEY environment variable is required")
+    print("❌ ERROR: GEMINI_API_KEY environment variable is not set!")
+    raise ValueError("GEMINI_API_KEY environment variable is required")
 
-
+print("✅ Environment variables validated successfully")
+print(f"✅ MONGO_URL configured: {MONGO_URL[:20]}...")
+print(f"✅ GEMINI_API_KEY configured: {'*' * len(GEMINI_API_KEY) if GEMINI_API_KEY else 'NOT SET'}")
 
 # CORS configuration
 app.add_middleware(
