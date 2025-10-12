@@ -18,7 +18,7 @@ app = FastAPI(title="AI Recruiter API", version="1.0.0")
 
 # Environment validation
 MONGO_URL = os.getenv("MONGO_URL")
-GEMINI_API_KEY = os.getenv("MISTRAL_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Validate required environment variables
 if not MONGO_URL:
