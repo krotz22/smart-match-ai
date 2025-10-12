@@ -172,12 +172,41 @@ Candidate Resume:
 
         return result
         
+<<<<<<< HEAD
     except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"❌ API call or JSON parsing error: {e}")
+=======
+    except requests.exceptions.RequestException as e:
+        print(f"❌ API request error in smart_match: {e}")
+        print(f"❌ MISTRAL_API_KEY configured: {'Yes' if MISTRAL_API_KEY else 'No'}")
+>>>>>>> 8b418d85c60c2ee4c48d2ff43b329bbd7a8be967
         return {
             "match_score": 0,
             "matched_skills": [],
             "missing_skills": [],
+<<<<<<< HEAD
             "summary": f"Could not parse result due to an error: {e}",
+=======
+            "summary": f"API request failed: {str(e)}",
+            "shortlist": False
+        }
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"❌ JSON parsing error in smart_match: {e}")
+        return {
+            "match_score": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "summary": f"Could not parse API response: {str(e)}",
+            "shortlist": False
+        }
+    except Exception as e:
+        print(f"❌ Unexpected error in smart_match: {e}")
+        print(f"❌ Error type: {type(e).__name__}")
+        return {
+            "match_score": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "summary": f"Unexpected error: {str(e)}",
+>>>>>>> 8b418d85c60c2ee4c48d2ff43b329bbd7a8be967
             "shortlist": False
         }
