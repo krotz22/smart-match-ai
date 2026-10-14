@@ -18,9 +18,10 @@ HEADERS = {
 
 # Gemini endpoint
 # Gemini 2.5 Pro supports structured JSON output.
+
 GEMINI_API_URL = (
     "https://generativelanguage.googleapis.com/"
-    "v1beta/models/gemini-2.5-pro:generateContent"
+    "v1beta/models/gemini-3.1-pro-preview:generateContent"
 )
 
 
