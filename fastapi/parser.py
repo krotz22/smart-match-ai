@@ -209,7 +209,8 @@ Resume Text:
             ],
             "generationConfig": {
                 "temperature": 1.0,
-                "maxOutputTokens": 2000
+                "maxOutputTokens": 8192,
+                "responseMimeType": "application/json"
             }
         }
 
@@ -391,7 +392,7 @@ Resume Text:
 
         return create_default_response(text)
 
-    except fitz.fitz.FileDataError as e:
+    except fitz.FileDataError as e:
 
         print(
             f"❌ PDF parsing error in "
