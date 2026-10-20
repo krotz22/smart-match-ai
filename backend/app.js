@@ -3,11 +3,15 @@ const cors = require('cors');
 const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
- 
+
 
 const app = express();
-app.use(cors({ origin: "*" })); 
-app.use(express.json());
+app.use(cors({ origin: "*" }));
+
+// Allow larger request bodies (resumes sent as base64 inside JSON)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+console.log("JSON body limit set to 10mb");
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -22,10 +26,8 @@ app.use("/api/shortlists", shortlistRoutes);
 
 const uri = process.env.MONGO_URL;
 
-mongoose.connect(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+// useNewUrlParser and useUnifiedTopology are no longer needed
+mongoose.connect(uri)
 .then(() => console.log("✅ Connected to MongoDB Atlas using Mongoose"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
