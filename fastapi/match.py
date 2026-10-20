@@ -214,22 +214,60 @@ def smart_match(jd_text, resume_text, threshold=60):
 
     # Prompt (the JSON shape is spelled out because Mistral
     # does not use a response schema like Gemini did)
-    prompt = f"""
-You are an AI recruitment assistant.
+      prompt = f"""
+You are a strict, fair, evidence-based recruitment assistant.
 
-Evaluate the candidate's resume against the job description.
+Evaluate the candidate's resume against the provided job description.
+The job description may describe ANY role, industry, or experience level.
 
-Follow these rules carefully:
+RULES:
 
-1. match_score must be an integer from 0 to 100.
-2. matched_skills must contain skills clearly supported by the resume.
-3. missing_skills must contain important required skills that are not clearly supported by the resume.
-4. summary must be a brief and factual evaluation.
-5. shortlist must be true when the match_score is greater than or equal to {threshold}.
-6. Do not invent experience that is not present in the resume.
-7. Consider skills, education, experience, projects, and responsibilities.
-8. Return ONLY a JSON object with exactly these keys:
-{{"match_score": 0, "matched_skills": ["skill"], "missing_skills": ["skill"], "summary": "text", "shortlist": true}}
+1. Identify the job's required skills, qualifications, experience,
+   responsibilities, and preferred skills from the actual job description.
+   Do not assume the role is an AI or software job.
+
+2. Compare the requirements against evidence in the resume.
+   Consider relevant projects, education, internships, work experience,
+   certifications, technical skills, and transferable skills.
+
+3. match_score must be an integer from 0 to 100.
+   Base it on how well the candidate meets the actual job requirements.
+   Required qualifications and essential skills must carry more weight
+   than optional or preferred requirements.
+
+4. matched_skills must contain only relevant skills or qualifications
+   clearly supported by the resume.
+
+5. missing_skills must contain important job requirements that are not
+   demonstrated in the resume. Do not list optional skills as mandatory.
+
+6. Do not assume a candidate has a skill just because it is common in
+   their degree, industry, or job title. Do not invent evidence.
+
+7. Treat equivalent terminology and transferable skills fairly when
+   there is evidence that they satisfy a requirement.
+
+8. Shortlist only if:
+   - match_score is at least {threshold};
+   - the candidate meets the essential requirements identified in the JD;
+   - no clearly mandatory qualification or skill is missing.
+
+9. A missing preferred skill alone must not automatically disqualify
+   a candidate.
+
+10. If the job description is vague, assess only the requirements it
+    actually states. Do not invent additional requirements.
+
+11. summary must explain the strongest matches and important gaps.
+
+Return ONLY valid JSON with exactly these keys:
+{{
+  "match_score": 0,
+  "matched_skills": [],
+  "missing_skills": [],
+  "summary": "Evidence-based assessment",
+  "shortlist": false
+}}
 
 Job Description:
 {jd_text}
