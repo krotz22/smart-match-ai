@@ -211,7 +211,7 @@ def smart_match(jd_text, resume_text, threshold=60):
     if not LLM_API_KEY:
         print("❌ LLM_API_KEY not found in environment.")
         return _failed_result("API Key not configured.")
-        prompt = f"""
+    prompt = f"""
     You are a strict, fair, evidence-based recruitment assistant.
     
     Evaluate the candidate's resume against the provided job description.
