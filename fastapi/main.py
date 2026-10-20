@@ -17,7 +17,7 @@ load_dotenv()
 app = FastAPI(title="AI Recruiter API", version="1.0.0")
 
 # Seconds to wait between resumes so the free-tier rate limit is not hit
-SECONDS_BETWEEN_RESUMES = 3
+SECONDS_BETWEEN_RESUMES = 15
 
 # Environment validation
 MONGO_URL = os.getenv("MONGO_URL")
