@@ -211,6 +211,7 @@ def smart_match(jd_text, resume_text, threshold=60):
     if not LLM_API_KEY:
         print("❌ LLM_API_KEY not found in environment.")
         return _failed_result("API Key not configured.")
+    
     prompt = f"""
         You are a senior recruiter and hiring manager. Evaluate how well ONE candidate
         fits ONE job. Be objective, consistent and evidence-based. The job can be in
@@ -296,12 +297,9 @@ def smart_match(jd_text, resume_text, threshold=60):
         <candidate_resume>
         {resume_text}
         </candidate_resume>
-        """
-   
+        """   
     # Prompt (the JSON shape is spelled out because Mistral
     # does not use a response schema like Gemini did)
-     
-
     try:
         print("🔄 Sending request to Mistral...")
 
